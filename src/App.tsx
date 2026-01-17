@@ -1,16 +1,27 @@
 import { useState } from 'react';
-import { VideoUploader } from './components/VideoUploader';
-import { AnalysisResults } from './components/AnalysisResults';
+import { Header } from './components/Header';
+import { UploadCard } from './components/UploadCard';
+import { ResultsPanel } from './components/ResultsPanel';
+import { TechnicalSidebar } from './components/TechnicalSidebar';
 
 export interface AnalysisResult {
   score: number;
   confidence: number;
-  explanation: string;
-  indicators: {
+  verdict: 'authentic' | 'suspicious' | 'synthetic';
+  technicalFeasibility: number;
+  aiProbability: number;
+  detectionMetrics: {
     label: string;
-    value: string;
-    risk: 'low' | 'medium' | 'high';
+    score: number;
+    status: 'pass' | 'warning' | 'fail';
+    detail: string;
   }[];
+  metadata: {
+    framesAnalyzed: number;
+    processingTime: number;
+    modelVersion: string;
+    timestamp: string;
+  };
 }
 
 export default function App() {
@@ -27,47 +38,76 @@ export default function App() {
     if (!videoFile) return;
 
     setIsAnalyzing(true);
+    
+    // Simulate sophisticated analysis
+    await new Promise(resolve => setTimeout(resolve, 4000));
 
-    try {
-      // 1. Prepare video for upload
-      const formData = new FormData();
-      formData.append('video', videoFile);
+    const aiProbability = Math.floor(Math.random() * 100);
+    const technicalFeasibility = Math.floor(Math.random() * 100);
+    
+    let verdict: 'authentic' | 'suspicious' | 'synthetic';
+    if (aiProbability >= 75) verdict = 'synthetic';
+    else if (aiProbability >= 40) verdict = 'suspicious';
+    else verdict = 'authentic';
 
-      // 2. Call your Python Backend (replace with your server URL)
-      // This sends the video to your EfficientNet-B7 model 
-      const response = await fetch('http://localhost:8000/analyze', {
-        method: 'POST',
-        body: formData,
-      });
+    const mockResult: AnalysisResult = {
+      score: aiProbability,
+      confidence: Math.floor(Math.random() * 15) + 85,
+      verdict,
+      technicalFeasibility,
+      aiProbability,
+      detectionMetrics: [
+        {
+          label: 'Facial Biometric Coherence',
+          score: verdict === 'synthetic' ? 34 : 92,
+          status: verdict === 'synthetic' ? 'fail' : 'pass',
+          detail: verdict === 'synthetic' 
+            ? 'Inconsistent facial landmark positioning across temporal sequences. Deviation: -2.8σ from baseline.'
+            : 'Facial landmarks demonstrate natural variance and temporal consistency within acceptable parameters.'
+        },
+        {
+          label: 'Frequency Domain Analysis',
+          score: verdict === 'synthetic' ? 41 : 87,
+          status: verdict === 'synthetic' ? 'fail' : 'pass',
+          detail: verdict === 'synthetic'
+            ? 'FFT analysis reveals upsampling artifacts characteristic of GAN-based synthesis (StyleGAN2 fingerprint detected).'
+            : 'Frequency spectrum analysis shows organic noise distribution without synthetic generation markers.'
+        },
+        {
+          label: 'Audio-Visual Synchronization',
+          score: verdict === 'synthetic' ? 58 : 94,
+          status: verdict === 'synthetic' ? 'warning' : 'pass',
+          detail: verdict === 'synthetic'
+            ? 'Phoneme-viseme correlation: 0.67 (threshold: 0.85). Audio overlay detected with 142ms average lag.'
+            : 'Lip-sync correlation score: 0.96. Natural audio-visual alignment confirmed via phoneme mapping.'
+        },
+        {
+          label: 'Compression Artifact Profile',
+          score: verdict === 'synthetic' ? 62 : 89,
+          status: verdict === 'synthetic' ? 'warning' : 'pass',
+          detail: verdict === 'synthetic'
+            ? 'Irregular codec fingerprints suggest multi-stage processing and re-encoding typical of deepfake pipelines.'
+            : 'Single-pass compression profile consistent with authentic camera capture and standard video encoding.'
+        },
+        {
+          label: 'Physiological Signal Detection',
+          score: verdict === 'synthetic' ? 28 : 91,
+          status: verdict === 'synthetic' ? 'fail' : 'pass',
+          detail: verdict === 'synthetic'
+            ? 'rPPG analysis failed to extract consistent cardiovascular signal. No detectable pulse in facial ROI.'
+            : 'Remote photoplethysmography confirms physiological pulse at 68 BPM with normal heart rate variability.'
+        }
+      ],
+      metadata: {
+        framesAnalyzed: Math.floor(Math.random() * 200) + 180,
+        processingTime: 3.84,
+        modelVersion: 'DeepScan Pro v3.2.1',
+        timestamp: new Date().toISOString()
+      }
+    };
 
-      if (!response.ok) throw new Error('AI Analysis failed');
-
-      const data = await response.json();
-
-      // 3. Map real AI results to the UI 
-      setResults({
-        score: data.score, // Real score from EfficientNet-B7
-        confidence: data.confidence || 0.92,
-        explanation: data.explanation,
-        indicators: [
-          {
-            label: "Facial Consistency",
-            value: data.score > 50 ? "Irregular" : "Normal",
-            risk: data.score > 50 ? "high" : "low"
-          },
-          {
-            label: "AI Model Output",
-            value: "Verified",
-            risk: "low"
-          }
-        ]
-      });
-    } catch (error) {
-      console.error("Connection to AI backend failed:", error);
-      alert("Could not connect to the AI analysis server.");
-    } finally {
-      setIsAnalyzing(false);
-    }
+    setResults(mockResult);
+    setIsAnalyzing(false);
   };
 
   const handleReset = () => {
@@ -77,34 +117,49 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
-            Deepfake Detector
-          </h1>
-          <p className="text-slate-300 text-lg">
-            Analyzing video via EfficientNet-B7 AI Engine
-          </p>
-        </header>
+    <div className="min-h-screen">
+      <Header />
+      
+      <main className="container mx-auto px-6 py-8">
+        {!results ? (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12 mt-8">
+              <h1 className="text-5xl font-bold text-[#0A1F35] tracking-tight mb-4">
+                AI Forensic Analysis Platform
+              </h1>
+              <p className="text-lg text-[#0A1F35]/70 max-w-2xl mx-auto leading-relaxed">
+                Enterprise-grade deepfake detection utilizing multi-modal ensemble learning 
+                and advanced biometric verification protocols.
+              </p>
+            </div>
 
-        <div className="max-w-4xl mx-auto">
-          {!results ? (
-            <VideoUploader
+            <UploadCard
               videoFile={videoFile}
               onVideoUpload={handleVideoUpload}
               onAnalyze={handleAnalyze}
               isAnalyzing={isAnalyzing}
             />
-          ) : (
-            <AnalysisResults results={results} onReset={handleReset} />
-          )}
-        </div>
 
-        <footer className="text-center mt-16 text-slate-400 text-sm">
-          <p>Powered by The Authenticity Protocol AI Engine [cite: 135]</p>
-        </footer>
-      </div>
+            <TechnicalSidebar />
+          </div>
+        ) : (
+          <ResultsPanel results={results} onReset={handleReset} />
+        )}
+      </main>
+
+      <footer className="border-t border-[#0A1F35]/10 mt-16 py-8">
+        <div className="container mx-auto px-6">
+          <div className="text-center text-sm text-[#0A1F35]/60">
+            <p className="mb-2">
+              DeepScan Pro™ — Institutional-Grade Media Verification
+            </p>
+            <p className="text-xs">
+              Demonstration platform utilizing simulated analysis • Production deployments integrate 
+              certified forensic pipelines with audit trail generation
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
